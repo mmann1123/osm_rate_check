@@ -1,6 +1,8 @@
 # Open Street Map Rate Check
 
-This module calculates the rate of OSM edits based on the weighted average of changesets submitted the same day and within at least one hour of each other. Edit rates are weighted to account for the fact that short editing sessions rate estimates are likely highly biased since we use the time of the first changeset - and those initial edits are ignored by the algorithm. As such, longer sessions are weighted more heavily than shorter sessions to account for this bias.
+This module calculates the rate of OSM edits based on the weighted average of changesets submitted the same day. A session is determined as the period between the initial and final changset - with a minimum of 1 hour between changeset within a session.
+
+Edit rates are weighted to account for the fact that short editing sessions rate estimates are likely biased since the initial changese edits are ignored by the algorithm. As such, longer sessions are weighted more heavily than shorter sessions to account for this bias.
 
 ## Install
 
