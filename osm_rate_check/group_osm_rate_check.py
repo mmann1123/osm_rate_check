@@ -200,16 +200,17 @@ def process_users(yaml_file):
         print(f"Missing users saved to {missing_csv_filename}")
 
 
-# Initialize Tkinter and open file dialog
-root = tk.Tk()
-root.withdraw()  # Hide the root window
-yaml_file = filedialog.askopenfilename(
-    title="Select YAML File",
-    filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")],
-)
-if yaml_file:
-    process_users(yaml_file)
-else:
-    print("No YAML file selected.")
+if __name__ == "__main__":
+    # Initialize Tkinter and open file dialog
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+    yaml_file = filedialog.askopenfilename(
+        title="Select YAML File",
+        filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")],
+    )
+    if yaml_file:
+        process_users(yaml_file)
+    else:
+        print("No YAML file selected.")
 
 # %%

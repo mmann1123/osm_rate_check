@@ -128,8 +128,10 @@ def calculate_rates(grouped_changesets):
 
 def main():
     username = input("Enter the OSM username: ")
+    days_back = int(input("How many days back do you want to search: "))
+
     print("Fetching changesets...")
-    changesets = fetch_changesets(username)
+    changesets = fetch_changesets(username, days_back)
     if not changesets:
         print("No changesets found for this user.")
         return
@@ -142,7 +144,7 @@ def main():
     calculate_rates(grouped_changesets)
 
 
-# if __name__ == "__main__":
-main()
+if __name__ == "__main__":
+    main()
 
 # %%
