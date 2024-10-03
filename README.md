@@ -72,3 +72,6 @@ From 2024-09-30 04:12:28 to 2024-09-30 04:45:23 (0.55 hours):
 --------------------------------------------------
 Weighted node rate: 316.68 nodes/hour
 ```
+
+## Citation
+Michael Mann. (2024). mmann1123/osm_rate_check: pulling_speed (v1.0.1). Zenodo. https://doi.org/10.5281/zenodo.13887134
