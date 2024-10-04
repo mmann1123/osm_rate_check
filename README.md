@@ -27,7 +27,7 @@ user_names:
 Or if all users will use the same period, you can specify the period at the top of the file. 
 
 ``` yaml
-period: 7
+default_days: 7
 user_names:
   - username: mmann1123
   - username: user2
