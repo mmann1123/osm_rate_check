@@ -1,4 +1,3 @@
-# %%
 import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
@@ -11,7 +10,7 @@ from tkinter import filedialog
 
 def fetch_changesets(username, days=10):
     """Fetch changesets for a user within the last 'days' days."""
-    end_date = datetime.now()
+    end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=days)
     time_param = f"{start_date.strftime('%Y-%m-%dT%H:%M:%SZ')},{end_date.strftime('%Y-%m-%dT%H:%M:%SZ')}"
     url = "https://api.openstreetmap.org/api/0.6/changesets"
@@ -93,6 +92,8 @@ def calculate_rates(grouped_changesets):
     """Calculate rates for each group of changesets."""
     weighted_rates = []
     period_total_hours = 0
+    total_nodes_all = 0  # Initialize total nodes across all groups
+    total_ways_all = 0  # Initialize total ways across all groups
     for group in grouped_changesets:
         start_time = group[0]["created_at"]
         end_time = group[-1]["created_at"]
@@ -118,6 +119,8 @@ def calculate_rates(grouped_changesets):
                 "group_way_rate": rate_ways,
             }
         )
+        total_nodes_all += total_nodes  # Accumulate total nodes
+        total_ways_all += total_ways  # Accumulate total ways
 
     # Calculate weighted rates
     weighted_node_rate = 0
@@ -127,7 +130,7 @@ def calculate_rates(grouped_changesets):
             weight = rate["group_hours"] / period_total_hours
             weighted_node_rate += weight * rate["group_node_rate"]
             weighted_way_rate += weight * rate["group_way_rate"]
-    return weighted_node_rate, weighted_way_rate
+    return weighted_node_rate, weighted_way_rate, total_nodes_all, total_ways_all
 
 
 def process_users(yaml_file):
@@ -157,12 +160,16 @@ def process_users(yaml_file):
                 )
                 missing_users.append(username)  # Append to missing_users
                 continue
-            weighted_node_rate, weighted_way_rate = calculate_rates(grouped_changesets)
+            weighted_node_rate, weighted_way_rate, total_nodes, total_ways = (
+                calculate_rates(grouped_changesets)
+            )
             results.append(
                 {
                     "username": username,
                     "weighted_node_rate": round(weighted_node_rate, 2),
                     "weighted_way_rate": round(weighted_way_rate, 2),
+                    "total_nodes": total_nodes,
+                    "total_ways": total_ways,
                 }
             )
         except Exception as e:
@@ -176,7 +183,13 @@ def process_users(yaml_file):
         current_date = datetime.now().strftime("%Y%m%d")
         csv_filename = f"OSM_Rates_{current_date}_{report_days}days.csv"
         with open(csv_filename, "w", newline="") as csvfile:
-            fieldnames = ["username", "weighted_node_rate", "weighted_way_rate"]
+            fieldnames = [
+                "username",
+                "weighted_node_rate",
+                "weighted_way_rate",
+                "total_nodes",
+                "total_ways",
+            ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             for row in results:
@@ -212,5 +225,3 @@ if __name__ == "__main__":
         process_users(yaml_file)
     else:
         print("No YAML file selected.")
-
-# %%
