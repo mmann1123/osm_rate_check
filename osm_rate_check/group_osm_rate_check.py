@@ -10,7 +10,7 @@ from tkinter import filedialog
 
 def fetch_changesets(username, days=10):
     """Fetch changesets for a user within the last 'days' days."""
-    end_date = datetime.utcnow()
+    end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
     time_param = f"{start_date.strftime('%Y-%m-%dT%H:%M:%SZ')},{end_date.strftime('%Y-%m-%dT%H:%M:%SZ')}"
     url = "https://api.openstreetmap.org/api/0.6/changesets"
