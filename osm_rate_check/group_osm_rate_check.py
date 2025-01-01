@@ -6,6 +6,7 @@ import yaml
 import csv
 import tkinter as tk
 from tkinter import filedialog
+from collections import defaultdict
 
 
 def fetch_changesets(username, days=10):
@@ -39,8 +40,6 @@ def fetch_changesets(username, days=10):
 
 def group_changesets(changesets):
     """Group changesets by day and time proximity."""
-    from collections import defaultdict
-
     # Group by date
     day_groups = defaultdict(list)
     for cs in changesets:
@@ -68,24 +67,29 @@ def group_changesets(changesets):
 
 
 def fetch_changeset_diff(cs_id):
-    """Fetch changeset diff and count added nodes and ways."""
+    """Fetch changeset diff and count added nodes, ways, and total edits."""
     url = f"https://api.openstreetmap.org/api/0.6/changeset/{cs_id}/download"
     response = requests.get(url)
     time.sleep(1)  # Respect API rate limits
     if response.status_code != 200:
         print(f"Error fetching changeset {cs_id}: {response.status_code}")
-        return 0, 0
+        return 0, 0, 0  # nodes_added, ways_added, total_edits
     root = ET.fromstring(response.content)
     nodes_added = 0
     ways_added = 0
+    total_edits = 0
     for action in root:
-        if action.tag == "create":
+        if action.tag in {"create", "modify", "delete"}:
             for element in action:
                 if element.tag == "node":
                     nodes_added += 1
                 elif element.tag == "way":
                     ways_added += 1
-    return nodes_added, ways_added
+                elif element.tag == "relation":
+                    pass  # If you want to track relations, add a counter here
+                # Add other element types if needed
+                total_edits += 1  # Increment total edits regardless of type
+    return nodes_added, ways_added, total_edits
 
 
 def calculate_rates(grouped_changesets):
@@ -94,6 +98,8 @@ def calculate_rates(grouped_changesets):
     period_total_hours = 0
     total_nodes_all = 0  # Initialize total nodes across all groups
     total_ways_all = 0  # Initialize total ways across all groups
+    total_edits_all = 0  # Initialize total edits across all groups
+
     for group in grouped_changesets:
         start_time = group[0]["created_at"]
         end_time = group[-1]["created_at"]
@@ -103,34 +109,51 @@ def calculate_rates(grouped_changesets):
         )  # Avoid division by zero
         total_nodes = 0
         total_ways = 0
+        total_edits = 0
+
         for cs in group:
             cs_id = cs["id"]
-            nodes_added, ways_added = fetch_changeset_diff(cs_id)
+            nodes_added, ways_added, edits_added = fetch_changeset_diff(cs_id)
             total_nodes += nodes_added
             total_ways += ways_added
+            total_edits += edits_added
 
         rate_nodes = total_nodes / total_hours if total_hours > 0 else 0
         rate_ways = total_ways / total_hours if total_hours > 0 else 0
+        rate_edits = total_edits / total_hours if total_hours > 0 else 0
+
         period_total_hours += total_hours
         weighted_rates.append(
             {
                 "group_hours": total_hours,
                 "group_node_rate": rate_nodes,
                 "group_way_rate": rate_ways,
+                "group_edit_rate": rate_edits,
             }
         )
         total_nodes_all += total_nodes  # Accumulate total nodes
         total_ways_all += total_ways  # Accumulate total ways
+        total_edits_all += total_edits  # Accumulate total edits
 
     # Calculate weighted rates
     weighted_node_rate = 0
     weighted_way_rate = 0
+    weighted_edit_rate = 0
     if period_total_hours > 0:
         for rate in weighted_rates:
             weight = rate["group_hours"] / period_total_hours
             weighted_node_rate += weight * rate["group_node_rate"]
             weighted_way_rate += weight * rate["group_way_rate"]
-    return weighted_node_rate, weighted_way_rate, total_nodes_all, total_ways_all
+            weighted_edit_rate += weight * rate["group_edit_rate"]
+
+    return (
+        weighted_node_rate,
+        weighted_way_rate,
+        weighted_edit_rate,
+        total_nodes_all,
+        total_ways_all,
+        total_edits_all,
+    )
 
 
 def process_users(yaml_file):
@@ -160,16 +183,23 @@ def process_users(yaml_file):
                 )
                 missing_users.append(username)  # Append to missing_users
                 continue
-            weighted_node_rate, weighted_way_rate, total_nodes, total_ways = (
-                calculate_rates(grouped_changesets)
-            )
+            (
+                weighted_node_rate,
+                weighted_way_rate,
+                weighted_edit_rate,
+                total_nodes,
+                total_ways,
+                total_edits,
+            ) = calculate_rates(grouped_changesets)
             results.append(
                 {
                     "username": username,
                     "weighted_node_rate": round(weighted_node_rate, 2),
                     "weighted_way_rate": round(weighted_way_rate, 2),
+                    "weighted_edit_rate": round(weighted_edit_rate, 2),
                     "total_nodes": total_nodes,
                     "total_ways": total_ways,
+                    "total_edits": total_edits,
                 }
             )
         except Exception as e:
@@ -187,8 +217,10 @@ def process_users(yaml_file):
                 "username",
                 "weighted_node_rate",
                 "weighted_way_rate",
+                "weighted_edit_rate",
                 "total_nodes",
                 "total_ways",
+                "total_edits",
             ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
